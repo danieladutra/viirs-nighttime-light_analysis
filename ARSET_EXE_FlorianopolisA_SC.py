@@ -39,7 +39,6 @@
 #- urllib.request
 #- json
 
-
 #Saídas do algoritmo
 #-------------------
 #1) Gráfico da série temporal de NTL
@@ -133,52 +132,91 @@ def get_location(lat, lon):
 
 
 # ============================================================
-# FUNÇÃO: Plot da série temporal
+# FUNÇÃO: Plotar tabela da série temporal (2 páginas)
 # ============================================================
 
-def plot_time_series(jd, dnb_value3, dnb_value1, city, suburb):
+def plot_table(df, city, suburb, state):
 
-    plt.figure(figsize=(12,6))
+    # Renomear colunas conforme solicitado
+    df_plot = df.copy()
 
-    plt.plot(jd, dnb_value3, label="DNB 3x3", marker='o')
-    plt.plot(jd, dnb_value1, label="DNB 1x1", marker='o')
+    df_plot.columns = ["Data", "DNB 3 x 3", "DNB 1 x 1"]
 
-    plt.xlabel("Data")
-    plt.ylabel("Radiação NTL (W.m⁻².sr⁻¹)")
+    # Converter valores para 3 casas decimais
+    df_plot["DNB 3 x 3"] = df_plot["DNB 3 x 3"].apply(
+        lambda x: f"{x:.3f}" if pd.notnull(x) else ""
+    )
 
-    titulo = f"Série Temporal de NTL - {city} ({suburb})"
+    df_plot["DNB 1 x 1"] = df_plot["DNB 1 x 1"].apply(
+        lambda x: f"{x:.3f}" if pd.notnull(x) else ""
+    )
+
+    # Converter data para string
+    df_plot["Data"] = df_plot["Data"].astype(str)
+
+    # Dividir tabela em duas partes
+    metade = int(np.ceil(len(df_plot)/2))
+
+    paginas = [
+        df_plot.iloc[:metade],
+        df_plot.iloc[metade:]
+    ]
+
+    for i, pagina in enumerate(paginas):
+
+        fig, ax = plt.subplots(figsize=(10,8))
+
+        ax.axis('off')
+
+        titulo = f"Tabela da Série Temporal de NTL\n{suburb}, {city}/{state}"
+
+        plt.title(titulo, fontsize=14, weight='bold', pad=20)
+
+        tabela = ax.table(
+            cellText=pagina.values,
+            colLabels=pagina.columns,
+            cellLoc='center',
+            loc='center'
+        )
+
+        tabela.auto_set_font_size(False)
+        tabela.set_fontsize(10)
+        tabela.scale(1.2,1.3)
+
+        plt.savefig(
+            f"Tabela_Serie_Temporal_NTL_pag{i+1}.png",
+            dpi=300,
+            bbox_inches='tight'
+        )
+
+        plt.show()
+
+# ============================================================
+# FUNÇÃO: Plotar tabela da série temporal
+# ============================================================
+
+def plot_table(df, city, suburb, state):
+
+    fig, ax = plt.subplots(figsize=(10,6))
+
+    ax.axis('off')
+
+    titulo = f"Tabela da Série Temporal de NTL - {suburb}, {city}/{state}"
+
+    tabela = ax.table(
+        cellText=df.values,
+        colLabels=df.columns,
+        cellLoc='center',
+        loc='center'
+    )
+
+    tabela.auto_set_font_size(False)
+    tabela.set_fontsize(10)
+    tabela.scale(1.2,1.2)
 
     plt.title(titulo)
 
-    plt.legend()
-    plt.grid(True)
-
-    plt.tight_layout()
-
-    plt.savefig("Serie_Temporal_NTL.png", dpi=300)
-    plt.savefig("Serie_Temporal_NTL.pdf")
-
-    plt.show()
-
-
-# ============================================================
-# FUNÇÃO: Mapa simples do ponto analisado
-# ============================================================
-
-def plot_map(lat, lon, city, suburb):
-
-    plt.figure(figsize=(8,8))
-
-    plt.scatter(lon, lat, color='red', s=100)
-
-    plt.xlabel("Longitude")
-    plt.ylabel("Latitude")
-
-    plt.title(f"Local analisado - {city} ({suburb})")
-
-    plt.grid(True)
-
-    plt.savefig("Mapa_Ponto_VIIRS.png", dpi=300)
+    plt.savefig("Tabela_Serie_Temporal_NTL.png", dpi=300)
 
     plt.show()
 
@@ -335,7 +373,15 @@ df = pd.DataFrame({
     "DNB_1x1": dnb_value1
 })
 
+# Arredondar valores para 3 casas decimais
+df["DNB_3x3"] = df["DNB_3x3"].round(3)
+df["DNB_1x1"] = df["DNB_1x1"].round(3)
+
+# Converter data para formato dia-mês-ano
+df["Data"] = pd.to_datetime(df["Data"]).dt.strftime("%d-%m-%Y")
+
 print("\nTabela de resultados:\n")
+
 print(df)
 
 
@@ -355,4 +401,8 @@ df.to_excel(excel_file, index=False)
 plot_time_series(jd, dnb_value3, dnb_value1, city, suburb)
 
 
-                                                            
+# ============================================================
+# GERAR TABELA GRÁFICA
+# ============================================================
+
+plot_table(df, city, suburb, state)
